@@ -12,28 +12,46 @@ public class SideBarBtnManager : MonoBehaviour
     public GameObject SideBarDisabler { get; set; }
 
     [field: SerializeField]
-    public Animator SideBarAnimator { get; set; }
+    public RectTransform TaskListView { get; set; }
 
     [field: SerializeField]
-    public RectTransform TaskListView { get; set; }
+    public GameObject MainWidnow { get; set; }
+
+    [field: SerializeField]
+    public Animation SideBarAnimation { get; set; }
 
     public void ShowSideBar()
     {
-        SideBarAnimator.SetBool("DoShow", true);
+        SideBarAnimation.PlayQueued("SideBarIn");
         SideBarBtn.SetActive(false);
         SideBarDisabler.SetActive(true);
     }
 
     public void HideSideBar()
     {
-        SideBarAnimator.SetBool("DoShow", false);
+        SideBarAnimation.PlayQueued("SideBarOut");
         SideBarBtn.SetActive(true);
         SideBarDisabler.SetActive(false);
+    }
+
+    private IEnumerator WaitForHideSideBar()
+    {
+        SideBarAnimation.PlayQueued("SideBarOut");
+        SideBarBtn.SetActive(true);
+        SideBarDisabler.SetActive(false);
+        yield return AnimationUtilities.WaitForAnimationEnd(SideBarAnimation);
     }
 
     public void OnTaskButtonClick()
     {
         TaskListView.anchoredPosition = new Vector2(0, 0);
-        HideSideBar();
+        StartCoroutine(OnTaskButtonClickAfterSideBarHides());
+    }
+
+    public IEnumerator OnTaskButtonClickAfterSideBarHides()
+    {
+        yield return WaitForHideSideBar();
+        TaskListView.gameObject.SetActive(true);
+        MainWidnow.SetActive(false);
     }
 }

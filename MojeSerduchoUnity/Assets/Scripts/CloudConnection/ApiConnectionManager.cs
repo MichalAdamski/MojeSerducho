@@ -64,17 +64,20 @@ namespace MyHeart
 
         private IEnumerator GetTasks(string userId, string token)
         {
+            Debug.Log("Getting tasks...");
             using (var webRequest = GetTaskRequest(userId, token))
             {
                 yield return webRequest.SendWebRequest();
                 if (webRequest.error == null)
                 {
-                    onResponse?.Invoke(Task.TaskList.FromJson(webRequest.downloadHandler.text));
+                    Debug.Log("Getting tasks - no error");
                     Debug.Log(webRequest.responseCode + " : " + webRequest.downloadHandler.text);
+                    onResponse?.Invoke(Task.TaskList.FromJson(webRequest.downloadHandler.text));
                 }
                 else
                     Debug.Log(webRequest.responseCode + " : " + webRequest.downloadHandler.text);
             }
+            Debug.Log("Getting tasks ended");
         }
 
         private UnityWebRequest GetTaskRequest(string userId, string token)
