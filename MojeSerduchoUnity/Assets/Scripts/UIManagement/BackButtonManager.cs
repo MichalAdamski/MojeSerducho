@@ -14,9 +14,7 @@ public class BackButtonManager : MonoBehaviour
     public UnityEvent OnBackEvent { get; set; }
     public void OnBackAction()
     {
-        ActualView.anchoredPosition = new Vector2(1080,0);
         ActualView.gameObject.SetActive(false);
-        PreviousView.anchoredPosition = new Vector2(0, 0);
         PreviousView.gameObject.SetActive(true);
         OnBackEvent?.Invoke();
     }

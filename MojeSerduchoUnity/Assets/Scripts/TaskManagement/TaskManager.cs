@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace MyHeart
@@ -10,10 +11,10 @@ namespace MyHeart
         [Header("Settings")] [SerializeField] private float timeBeforeNotify;
         [SerializeField] private ApiConnectionManager connectionManager;
 
-        public static List<Task> TaskList { get; private set; }
+        public static Dictionary<string, Task> TaskList { get; private set; }
         public Action<Task> OnNotifyBeforeEnd { get; set; }
         public Action<Task> OnNotifyBeforeStart { get; set; }
-
+        public Action<List<Task>, float> OnTasksCreated { get; set; }
 
         public Action<List<Task>> OnRefresh { get; set; }
 
@@ -31,9 +32,10 @@ namespace MyHeart
             set => timeBeforeNotify = value;
         }
 
-        private void Start()
+        private void Awake()
         {
-            connectionManager.OnResponse.AddListener(AddTasks);
+            connectionManager.onResponse += AddTasks;
+            connectionManager.onTaskDone += EndTask;
             StartCoroutine(GetTasks());
             OnNotifyBeforeEnd = (task) => Debug.Log("Message before end: " + task.Name);
             OnNotifyBeforeStart = (task) => Debug.Log("Message before start: " + task.Name);
@@ -47,13 +49,41 @@ namespace MyHeart
 
         private void AddTasks(Task.TaskList tasks)
         {
-            TaskList = tasks.Tasks;
-            foreach (var task in TaskList)
+            TaskList = TaskList ?? new Dictionary<string, Task>();
+            var list = tasks.Tasks;
+            foreach (var task in list)
             {
-                task.DoNotifyBeforeEnd = true;
-                task.DoNotifyBeforeStart = true;
-                task.ToDo = true;
+                if (!TaskList.TryGetValue(task.TaskId, out var value))
+                {
+                    task.DoNotifyBeforeEnd = true;
+                    task.DoNotifyBeforeStart = true;
+                    task.ToDo = true;
+                    TaskList.Add(task.TaskId, task);
+                }
+                else
+                {
+                    task.DoNotifyBeforeEnd = value.DoNotifyBeforeEnd;
+                    task.DoNotifyBeforeStart = value.DoNotifyBeforeStart;
+                    task.ToDo = value.ToDo;
+                }
+
+                TaskList[task.TaskId] = task;
             }
+
+            var doneRatio = 0.0f;
+            foreach (var task in TaskList.Values.Where(task => task.IsDone == 1))
+            {
+                doneRatio++;
+            }
+
+            doneRatio /= TaskList.Count;
+            OnTasksCreated?.Invoke(TaskList.Values.ToList(), doneRatio);
+        }
+
+        private void EndTask()
+        {
+            areTasksLoaded = false;
+            StartCoroutine(GetTasks());
         }
 
         private IEnumerator GetTasks()
@@ -64,7 +94,7 @@ namespace MyHeart
 
         private void CheckTime()
         {
-            foreach (var task in TaskList)
+            foreach (var task in TaskList.Values)
             {
                 if (task.StartTime != null)
                 {
@@ -120,7 +150,7 @@ namespace MyHeart
 
             if (task.ToDo) return;
             task.ToDo = true;
-            OnRefresh?.Invoke(TaskList);
+            OnRefresh?.Invoke(TaskList.Values.ToList());
         }
 
         private void NotifyBeforeStartAndRefresh(Task task)
@@ -133,14 +163,19 @@ namespace MyHeart
 
             if (task.ToDo) return;
             task.ToDo = true;
-            OnRefresh?.Invoke(TaskList);
+            OnRefresh?.Invoke(TaskList.Values.ToList());
         }
 
         private void HideAndRefresh(Task task)
         {
             if (!task.ToDo) return;
             task.ToDo = false;
-            OnRefresh?.Invoke(TaskList);
+            OnRefresh?.Invoke(TaskList.Values.ToList());
+        }
+
+        public void EndTask(Task task)
+        {
+            ConnectionManager.EndTaskAsync(task);
         }
     }
 }

@@ -44,7 +44,6 @@ public class SideBarBtnManager : MonoBehaviour
 
     public void OnTaskButtonClick()
     {
-        TaskListView.anchoredPosition = new Vector2(0, 0);
         StartCoroutine(OnTaskButtonClickAfterSideBarHides());
     }
 

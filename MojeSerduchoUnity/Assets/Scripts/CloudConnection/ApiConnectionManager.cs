@@ -16,10 +16,12 @@ namespace MyHeart
 
     public class ApiConnectionManager : MonoBehaviour
     {
-        [SerializeField] private string apiUrl;
-        [SerializeField] private string apiGetTask;
-        [SerializeField] private string apiLogin;
-        [SerializeField] private UnityTaskEvent onResponse;
+        [SerializeField] private string apiUrl = "https://7eylhg26k2.execute-api.us-east-1.amazonaws.com/prod";
+        [SerializeField] private string apiGetTask = "/task/{0}";
+        [SerializeField] private string apiLogin = "/login";
+        [SerializeField] private string apiEndTask = "/task/management/{0}/isdone";
+        [SerializeField] public event Action<Task.TaskList> onResponse;
+        [SerializeField] public event Action onTaskDone; 
 
         private static UserInfo userInfo;
 
@@ -27,12 +29,6 @@ namespace MyHeart
         {
             get => apiUrl;
             set => apiUrl = value;
-        }
-
-        public UnityTaskEvent OnResponse
-        {
-            get => onResponse;
-            set => onResponse = value;
         }
 
         public string ApiGetTask
@@ -96,7 +92,7 @@ namespace MyHeart
 
         private string GetTaskUri(string userId)
         {
-            return apiUrl + apiGetTask + $"/{userId}";
+            return apiUrl + string.Format(apiGetTask, userId);
         }
 
         public bool LoginSync(UserLoginData userData)
@@ -106,7 +102,6 @@ namespace MyHeart
 
         private bool Login(UserLoginData userData)
         {
-
             using (var webRequest = GetLoginRequest(userData))
             {
                 webRequest.SendWebRequest();
@@ -137,6 +132,46 @@ namespace MyHeart
             webRequest.SetRequestHeader("Content-Type", "application/json");
 
             return webRequest;
+        }
+
+        public void EndTaskAsync(Task task)
+        {
+            StartCoroutine(EndTask(task, userInfo.Token));
+        }
+
+        private IEnumerator EndTask(Task task, string token)
+        {
+            using (var webRequest = GetTaskEndRequest(task.TaskId, token))
+            {
+                Debug.Log(webRequest.uri);
+                yield return webRequest.SendWebRequest();
+                if (webRequest.error == null)
+                {
+                    Debug.Log("End tasks - no error");
+                    Debug.Log(webRequest.responseCode + " : " + webRequest.downloadHandler.text);
+                    onTaskDone?.Invoke();
+                }
+                else
+                    Debug.Log(webRequest.responseCode + " : " + webRequest.downloadHandler.text);
+            }
+        }
+
+        private UnityWebRequest GetTaskEndRequest(string id, string token)
+        {
+            var webRequest = new UnityWebRequest(GetTaskEndUri(id), "GET")
+            {
+                downloadHandler = new DownloadHandlerBuffer()
+            };
+
+            webRequest.SetRequestHeader("Content-Type", "application/json");
+            webRequest.SetRequestHeader("Authentication", token);
+            Debug.Log(token);
+            return webRequest;
+        }
+
+        private string GetTaskEndUri(string taskId)
+        {
+            return apiUrl + string.Format(apiEndTask, taskId);
         }
 
         public class UserInfo

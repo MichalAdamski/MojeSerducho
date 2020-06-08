@@ -20,6 +20,8 @@ namespace MyHeart
         public TimeSpan? EndTime;
         [JsonProperty("duration", NullValueHandling = NullValueHandling.Ignore)]
         public float Duration;
+        [JsonProperty("description", NullValueHandling = NullValueHandling.Ignore)]
+        public string Description;
 
         public bool DoNotifyBeforeEnd { get; set; }
         public bool DoNotifyBeforeStart { get; set; }
